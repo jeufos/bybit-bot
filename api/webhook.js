@@ -60,6 +60,10 @@ export default async function handler(req, res) {
     const crypto = await import("node:crypto");
     const https = await import("node:https");
 
+    // Kopyalamada bozulmayı önlemek için bölünmüş alan adları
+    const demoHost = "api-demo." + "bybit.com";
+    const publicHost = "api." + "bybit.com";
+
     // IPv4 zorlamalı özel HTTPS istek fonksiyonu
     function httpsRequest(hostname, path, method, headers = {}, body = null) {
       return new Promise((resolve, reject) => {
@@ -68,7 +72,7 @@ export default async function handler(req, res) {
           port: 443,
           path: path,
           method: method,
-          family: 4, // IPv6 takılmalarını önlemek için IPv4 zorla
+          family: 4,
           headers: {
             "User-Agent": "BybitTradingBot/1.0",
             ...headers
@@ -126,7 +130,7 @@ export default async function handler(req, res) {
         headers["Content-Length"] = Buffer.byteLength(bodyStr);
       }
 
-      return await httpsRequest("://bybit.com", fullPath, method, headers, method === "POST" ? bodyStr : null);
+      return await httpsRequest(demoHost, fullPath, method, headers, method === "POST" ? bodyStr : null);
     }
 
     // 3. Mevcut Açık Pozisyonu Kontrol Et
@@ -165,7 +169,7 @@ export default async function handler(req, res) {
     }
 
     // 4. Parite Basamak Kurallarını Çek
-    const infoData = await httpsRequest("://bybit.com", `/v5/market/instruments-info?category=linear&symbol=${symbol}`, "GET");
+    const infoData = await httpsRequest(publicHost, `/v5/market/instruments-info?category=linear&symbol=${symbol}`, "GET");
     const firstInstrument = infoData?.result?.list?.at(0);
     const qtyStepStr = firstInstrument?.lotSizeFilter?.qtyStep || "0.001";
     const minOrderQty = parseFloat(firstInstrument?.lotSizeFilter?.minOrderQty || "0.001");
