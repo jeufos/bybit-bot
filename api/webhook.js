@@ -1,11 +1,21 @@
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).send("Sadece POST istekleri kabul edilir.");
   }
 
   try {
-    const rawText = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-    const parts = rawText.trim().split("|");
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    }
+    const rawText = Buffer.concat(chunks).toString("utf8").trim();
+    const parts = rawText.split("|");
 
     // 1. Güvenlik Şifresi Kontrolü
     if (parts.at(0) !== process.env.WEBHOOK_SECRET) {
@@ -47,19 +57,40 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.BYBIT_API_KEY;
     const apiSecret = process.env.BYBIT_API_SECRET;
-    const demoBaseUrl = "https://bybit.com";
-    const publicBaseUrl = "https://bybit.com";
-
-    // HMAC-SHA256 İmzalama (Node.js crypto modülü ile)
     const crypto = await import("node:crypto");
+    const https = await import("node:https");
 
-    async function safeJsonParse(response, stepName) {
-      const text = await response.text();
-      try {
-        return JSON.parse(text);
-      } catch (_e) {
-        throw new Error(`${stepName} adımında HTML yanıtı alındı (HTTP ${response.status}).`);
-      }
+    // IPv4 zorlamalı özel HTTPS istek fonksiyonu
+    function httpsRequest(hostname, path, method, headers = {}, body = null) {
+      return new Promise((resolve, reject) => {
+        const options = {
+          hostname: hostname,
+          port: 443,
+          path: path,
+          method: method,
+          family: 4, // IPv6 takılmalarını önlemek için IPv4 zorla
+          headers: {
+            "User-Agent": "BybitTradingBot/1.0",
+            ...headers
+          }
+        };
+
+        const request = https.request(options, (response) => {
+          let data = "";
+          response.on("data", (chunk) => (data += chunk));
+          response.on("end", () => {
+            try {
+              resolve(JSON.parse(data));
+            } catch (_e) {
+              reject(new Error(`${path} adımında geçersiz yanıt (HTTP ${response.statusCode}): ${data.slice(0, 100)}`));
+            }
+          });
+        });
+
+        request.on("error", (err) => reject(err));
+        if (body) request.write(body);
+        request.end();
+      });
     }
 
     async function sendBybitRequest(method, endpoint, paramsObj = {}) {
@@ -82,25 +113,20 @@ export default async function handler(req, res) {
         .update(signPayload)
         .digest("hex");
 
-      const url = method === "GET" && queryString ? `${demoBaseUrl}${endpoint}?${queryString}` : `${demoBaseUrl}${endpoint}`;
-      const fetchOptions = {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "BybitTradingBot/1.0",
-          "X-BAPI-API-KEY": apiKey,
-          "X-BAPI-SIGN": signature,
-          "X-BAPI-TIMESTAMP": timestamp,
-          "X-BAPI-RECV-WINDOW": recvWindow
-        }
+      const fullPath = method === "GET" && queryString ? `${endpoint}?${queryString}` : endpoint;
+      const headers = {
+        "Content-Type": "application/json",
+        "X-BAPI-API-KEY": apiKey,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-RECV-WINDOW": recvWindow
       };
 
       if (method === "POST") {
-        fetchOptions.body = bodyStr;
+        headers["Content-Length"] = Buffer.byteLength(bodyStr);
       }
 
-      const response = await fetch(url, fetchOptions);
-      return await safeJsonParse(response, endpoint);
+      return await httpsRequest("://bybit.com", fullPath, method, headers, method === "POST" ? bodyStr : null);
     }
 
     // 3. Mevcut Açık Pozisyonu Kontrol Et
@@ -139,10 +165,7 @@ export default async function handler(req, res) {
     }
 
     // 4. Parite Basamak Kurallarını Çek
-    const infoRes = await fetch(`${publicBaseUrl}/v5/market/instruments-info?category=linear&symbol=${symbol}`, {
-      headers: { "User-Agent": "BybitTradingBot/1.0" }
-    });
-    const infoData = await safeJsonParse(infoRes, "instruments-info");
+    const infoData = await httpsRequest("://bybit.com", `/v5/market/instruments-info?category=linear&symbol=${symbol}`, "GET");
     const firstInstrument = infoData?.result?.list?.at(0);
     const qtyStepStr = firstInstrument?.lotSizeFilter?.qtyStep || "0.001";
     const minOrderQty = parseFloat(firstInstrument?.lotSizeFilter?.minOrderQty || "0.001");
@@ -192,6 +215,11 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    return res.status(500).json({ status: "CodeError", message: err.message });
+    return res.status(500).json({
+      status: "CodeError",
+      message: err.message,
+      code: err.code || "UNKNOWN",
+      cause: err.cause ? String(err.cause) : null
+    });
   }
 }
