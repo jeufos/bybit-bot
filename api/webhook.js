@@ -41,17 +41,17 @@ export default async function handler(req, res) {
     const targetSide = action === "BUY" ? "Buy" : "Sell";
 
     // 2. TP ve SL Fiyatlarını Ayıkla
-    let takeProfit = "";
-    let stopLoss = "";
+    let rawTp = "";
+    let rawSl = "";
 
     for (const item of parts.slice(4)) {
       if (item.startsWith("TP:")) {
         const val = item.replace("TP:", "");
-        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) takeProfit = val;
+        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawTp = val;
       }
       if (item.startsWith("SL:")) {
         const val = item.replace("SL:", "");
-        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) stopLoss = val;
+        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawSl = val;
       }
     }
 
@@ -60,11 +60,10 @@ export default async function handler(req, res) {
     const crypto = await import("node:crypto");
     const https = await import("node:https");
 
-    // Kopyalamada bozulmayı önlemek için bölünmüş alan adları
     const demoHost = "api-demo." + "bybit.com";
     const publicHost = "api." + "bybit.com";
 
-    // IPv4 zorlamalı özel HTTPS istek fonksiyonu
+    // IPv4 zorlamalı HTTPS istek fonksiyonu
     function httpsRequest(hostname, path, method, headers = {}, body = null) {
       return new Promise((resolve, reject) => {
         const options = {
@@ -168,32 +167,61 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Parite Basamak Kurallarını Çek
+    // 4. Paritenin Miktar, Kaldıraç ve Fiyat Hassasiyeti (TickSize) Kurallarını Çek
     const infoData = await httpsRequest(publicHost, `/v5/market/instruments-info?category=linear&symbol=${symbol}`, "GET");
     const firstInstrument = infoData?.result?.list?.at(0);
+
+    if (!firstInstrument) {
+      return res.status(400).json({
+        status: "SymbolError",
+        reason: `${symbol} paritesi Bybit Linear API üzerinde bulunamadı.`
+      });
+    }
+
+    // Miktar (Lot) Kuralları
     const qtyStepStr = firstInstrument?.lotSizeFilter?.qtyStep || "0.001";
     const minOrderQty = parseFloat(firstInstrument?.lotSizeFilter?.minOrderQty || "0.001");
     const qtyStep = parseFloat(qtyStepStr);
-    const decimals = qtyStepStr.includes(".") ? qtyStepStr.split(".").at(1).length : 0;
+    const qtyDecimals = qtyStepStr.includes(".") ? qtyStepStr.split(".").at(1).length : 0;
 
+    // Fiyat (TickSize) Kuralları
+    const tickSizeStr = firstInstrument?.priceFilter?.tickSize || "0.01";
+    const tickSize = parseFloat(tickSizeStr);
+    const priceDecimals = tickSizeStr.includes(".") ? tickSizeStr.split(".").at(1).length : 0;
+
+    function formatPrice(priceStr) {
+      if (!priceStr) return "";
+      const num = parseFloat(priceStr);
+      if (isNaN(num) || num <= 0) return "";
+      const rounded = Math.round(num / tickSize) * tickSize;
+      return rounded.toFixed(priceDecimals);
+    }
+
+    const takeProfit = formatPrice(rawTp);
+    const stopLoss = formatPrice(rawSl);
+
+    // Kaldıraç Limiti Kontrolü (Varsayılan 10x, TradFi maks. limiti düşükse otomatik uyarlar)
+    const maxAllowedLeverage = parseFloat(firstInstrument?.leverageFilter?.maxLeverage || "10");
+    const targetLeverage = Math.min(10, maxAllowedLeverage);
+
+    // 10 Dolar Teminat x Hedef Kaldıraç ile Pozisyon Büyüklüğü Hesabı
     const marginUsdt = 10;
-    const leverage = 10;
-    const positionValueUsdt = marginUsdt * leverage;
+    const positionValueUsdt = marginUsdt * targetLeverage;
 
     let rawQty = positionValueUsdt / signalPrice;
     let finalQty = Math.floor(rawQty / qtyStep) * qtyStep;
     if (finalQty < minOrderQty) finalQty = minOrderQty;
-    const formattedQty = finalQty.toFixed(decimals);
+    const formattedQty = finalQty.toFixed(qtyDecimals);
 
-    // 5. Kaldıracı 10x Yap
+    // 5. Kaldıracı Ayarla
     await sendBybitRequest("POST", "/v5/position/set-leverage", {
       category: "linear",
       symbol: symbol,
-      buyLeverage: String(leverage),
-      sellLeverage: String(leverage)
+      buyLeverage: String(targetLeverage),
+      sellLeverage: String(targetLeverage)
     });
 
-    // 6. Yeni Emri TP ve SL ile Aç
+    // 6. Yeni Emri Yuvarlanmış TP ve SL ile Aç
     const orderData = {
       category: "linear",
       symbol: symbol,
@@ -212,6 +240,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       status: "Completed",
+      symbol: symbol,
+      appliedLeverage: targetLeverage,
       calculatedQty: formattedQty,
       tp: takeProfit,
       sl: stopLoss,
