@@ -14,21 +14,20 @@ export default async function handler(req, res) {
     for await (const chunk of req) {
       chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
     }
-    const rawText = Buffer.concat(chunks).toString("utf8").trim();
-    const parts = rawText.split("|");
 
-    // 1. Güvenlik Şifresi Kontrolü
-    if (parts.at(0) !== process.env.WEBHOOK_SECRET) {
-      return res.status(401).json({
-        status: "AuthError",
-        gelenSifre: parts.at(0),
-        beklenenSifreTanimliMi: Boolean(process.env.WEBHOOK_SECRET)
-      });
+    let rawText = Buffer.concat(chunks).toString("utf8").trim();
+    if (rawText.startsWith('"') && rawText.endsWith('"')) {
+      rawText = rawText.slice(1, -1);
     }
 
-    const action = parts.at(1);
-    const symbol = parts.at(2).replace(".P", "");
-    const signalPrice = parseFloat(parts.at(3));
+    const parts = rawText.split("|").map((p) => p.trim());
+
+    // Eğer mesajın başında şifre varsa otomatik atla, yoksa doğrudan BUY/SELL'i oku
+    const startIndex = (parts.at(0) === "BUY" || parts.at(0) === "SELL" || parts.at(0) === "TP" || parts.at(0) === "SL") ? 0 : 1;
+
+    const action = parts.at(startIndex);
+    const symbol = (parts.at(startIndex + 1) || "").replace(".P", "");
+    const signalPrice = parseFloat(parts.at(startIndex + 2));
 
     if (action === "TP" || action === "SL") {
       return res.status(200).json({ status: "Ignored", reason: "TP/SL zaten emre tanımlandı." });
@@ -40,17 +39,17 @@ export default async function handler(req, res) {
 
     const targetSide = action === "BUY" ? "Buy" : "Sell";
 
-    // 2. TP ve SL Fiyatlarını Ayıkla
+    // TP ve SL Fiyatlarını Ayıkla
     let rawTp = "";
     let rawSl = "";
 
-    for (const item of parts.slice(4)) {
+    for (const item of parts.slice(startIndex + 3)) {
       if (item.startsWith("TP:")) {
-        const val = item.replace("TP:", "");
+        const val = item.replace("TP:", "").trim();
         if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawTp = val;
       }
       if (item.startsWith("SL:")) {
-        const val = item.replace("SL:", "");
+        const val = item.replace("SL:", "").trim();
         if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawSl = val;
       }
     }
@@ -63,7 +62,6 @@ export default async function handler(req, res) {
     const demoHost = "api-demo." + "bybit.com";
     const publicHost = "api." + "bybit.com";
 
-    // IPv4 zorlamalı HTTPS istek fonksiyonu
     function httpsRequest(hostname, path, method, headers = {}, body = null) {
       return new Promise((resolve, reject) => {
         const options = {
@@ -132,7 +130,7 @@ export default async function handler(req, res) {
       return await httpsRequest(demoHost, fullPath, method, headers, method === "POST" ? bodyStr : null);
     }
 
-    // 3. Mevcut Açık Pozisyonu Kontrol Et
+    // Mevcut Açık Pozisyonu Kontrol Et
     const posRes = await sendBybitRequest("GET", "/v5/position/list", {
       category: "linear",
       symbol: symbol
@@ -167,7 +165,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Paritenin Miktar, Kaldıraç ve Fiyat Hassasiyeti (TickSize) Kurallarını Çek
+    // Parite Kurallarını Çek
     const infoData = await httpsRequest(publicHost, `/v5/market/instruments-info?category=linear&symbol=${symbol}`, "GET");
     const firstInstrument = infoData?.result?.list?.at(0);
 
@@ -178,13 +176,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // Miktar (Lot) Kuralları
     const qtyStepStr = firstInstrument?.lotSizeFilter?.qtyStep || "0.001";
     const minOrderQty = parseFloat(firstInstrument?.lotSizeFilter?.minOrderQty || "0.001");
     const qtyStep = parseFloat(qtyStepStr);
     const qtyDecimals = qtyStepStr.includes(".") ? qtyStepStr.split(".").at(1).length : 0;
 
-    // Fiyat (TickSize) Kuralları
     const tickSizeStr = firstInstrument?.priceFilter?.tickSize || "0.01";
     const tickSize = parseFloat(tickSizeStr);
     const priceDecimals = tickSizeStr.includes(".") ? tickSizeStr.split(".").at(1).length : 0;
@@ -200,11 +196,9 @@ export default async function handler(req, res) {
     const takeProfit = formatPrice(rawTp);
     const stopLoss = formatPrice(rawSl);
 
-    // Kaldıraç Limiti Kontrolü (Varsayılan 10x, TradFi maks. limiti düşükse otomatik uyarlar)
     const maxAllowedLeverage = parseFloat(firstInstrument?.leverageFilter?.maxLeverage || "10");
     const targetLeverage = Math.min(10, maxAllowedLeverage);
 
-    // 10 Dolar Teminat x Hedef Kaldıraç ile Pozisyon Büyüklüğü Hesabı
     const marginUsdt = 10;
     const positionValueUsdt = marginUsdt * targetLeverage;
 
@@ -213,7 +207,7 @@ export default async function handler(req, res) {
     if (finalQty < minOrderQty) finalQty = minOrderQty;
     const formattedQty = finalQty.toFixed(qtyDecimals);
 
-    // 5. Kaldıracı Ayarla
+    // Kaldıracı Ayarla
     await sendBybitRequest("POST", "/v5/position/set-leverage", {
       category: "linear",
       symbol: symbol,
@@ -221,7 +215,7 @@ export default async function handler(req, res) {
       sellLeverage: String(targetLeverage)
     });
 
-    // 6. Yeni Emri Yuvarlanmış TP ve SL ile Aç
+    // Yeni Emri Aç
     const orderData = {
       category: "linear",
       symbol: symbol,
@@ -251,9 +245,7 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({
       status: "CodeError",
-      message: err.message,
-      code: err.code || "UNKNOWN",
-      cause: err.cause ? String(err.cause) : null
+      message: err.message
     });
   }
 }
