@@ -22,7 +22,6 @@ export default async function handler(req, res) {
 
     const parts = rawText.split("|").map((p) => p.trim());
 
-    // Şifre varsa atla, yoksa doğrudan BUY/SELL oku
     const startIndex = (parts.at(0) === "BUY" || parts.at(0) === "SELL" || parts.at(0) === "TP" || parts.at(0) === "SL") ? 0 : 1;
 
     const action = parts.at(startIndex);
@@ -40,7 +39,6 @@ export default async function handler(req, res) {
     const targetSide = action === "BUY" ? "BUY" : "SELL";
     const closeSide = action === "BUY" ? "SELL" : "BUY";
 
-    // TP ve SL Fiyatlarını Ayıkla
     let rawTp = "";
     let rawSl = "";
 
@@ -115,7 +113,7 @@ export default async function handler(req, res) {
       return await httpsRequest(demoHost, fullPath, method, headers);
     }
 
-    // 1. Parite Kurallarını (stepSize ve tickSize) Çek
+    // 1. Parite Kurallarını Çek
     const exchangeInfo = await httpsRequest(demoHost, "/fapi/v1/exchangeInfo", "GET");
     const symbolInfo = (exchangeInfo?.symbols || []).find((s) => s.symbol === symbol);
 
@@ -157,7 +155,6 @@ export default async function handler(req, res) {
       const currentAmt = parseFloat(activePos.positionAmt);
       const currentSide = currentAmt > 0 ? "BUY" : "SELL";
 
-      // Aynı yönde pozisyon açıksa yeni işlem açma
       if (currentSide === targetSide) {
         return res.status(200).json({
           status: "Ignored",
@@ -165,8 +162,10 @@ export default async function handler(req, res) {
         });
       }
 
-      // Ters yönde sinyal geldiyse önce açık emirleri (eski TP/SL) iptal et ve pozisyonu kapat
+      // Ters yönde sinyal geldiyse standart ve Algo açık emirleri iptal et, pozisyonu kapat
       await sendBinanceRequest("DELETE", "/fapi/v1/allOpenOrders", { symbol: symbol });
+      await sendBinanceRequest("DELETE", "/fapi/v1/algoOpenOrders", { symbol: symbol });
+
       const closeRes = await sendBinanceRequest("POST", "/fapi/v1/order", {
         symbol: symbol,
         side: closeSide,
@@ -183,7 +182,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. Kaldıracı 10x Yap (İzin verilen maksimum kaldıraç düşükse otomatik düşürür)
+    // 3. Kaldıracı 10x Yap
     let targetLeverage = 10;
     const levRes = await sendBinanceRequest("POST", "/fapi/v1/leverage", {
       symbol: symbol,
@@ -216,27 +215,29 @@ export default async function handler(req, res) {
       });
     }
 
-    // 6. Varsa TP ve SL Emirlerini Pozisyona Bağla
+    // 6. Yeni Algo Order API (/fapi/v1/algoOrder) ile TP ve SL Bağla
     let tpOrder = null;
     let slOrder = null;
 
     if (takeProfit) {
-      tpOrder = await sendBinanceRequest("POST", "/fapi/v1/order", {
+      tpOrder = await sendBinanceRequest("POST", "/fapi/v1/algoOrder", {
+        algoType: "CONDITIONAL",
         symbol: symbol,
         side: closeSide,
         type: "TAKE_PROFIT_MARKET",
-        stopPrice: takeProfit,
+        triggerPrice: takeProfit,
         closePosition: "true",
         workingType: "MARK_PRICE"
       });
     }
 
     if (stopLoss) {
-      slOrder = await sendBinanceRequest("POST", "/fapi/v1/order", {
+      slOrder = await sendBinanceRequest("POST", "/fapi/v1/algoOrder", {
+        algoType: "CONDITIONAL",
         symbol: symbol,
         side: closeSide,
         type: "STOP_MARKET",
-        stopPrice: stopLoss,
+        triggerPrice: stopLoss,
         closePosition: "true",
         workingType: "MARK_PRICE"
       });
