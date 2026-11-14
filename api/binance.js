@@ -59,6 +59,7 @@ export default async function handler(req, res) {
     const https = await import("node:https");
 
     const demoHost = "testnet.binancefuture." + "com";
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     function httpsRequest(hostname, path, method, headers = {}, body = null) {
       return new Promise((resolve, reject) => {
@@ -162,7 +163,7 @@ export default async function handler(req, res) {
         });
       }
 
-      // Ters yönde sinyal geldiyse standart ve Algo açık emirleri iptal et, pozisyonu kapat
+      // Ters yönde sinyal geldiyse mevcut emirleri iptal et ve pozisyonu kapat
       await sendBinanceRequest("DELETE", "/fapi/v1/allOpenOrders", { symbol: symbol });
       await sendBinanceRequest("DELETE", "/fapi/v1/algoOpenOrders", { symbol: symbol });
 
@@ -180,6 +181,9 @@ export default async function handler(req, res) {
           binanceResponse: closeRes
         });
       }
+
+      // Kapanışın borsada işlenmesi için 300ms bekle
+      await sleep(300);
     }
 
     // 3. Kaldıracı 10x Yap
@@ -215,7 +219,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // 6. Yeni Algo Order API (/fapi/v1/algoOrder) ile TP ve SL Bağla
+    // Pozisyonun hesaba işlenmesi için 350ms bekle
+    await sleep(350);
+
+    // 6. Yeni Algo Order API ile TP ve SL Bağla
     let tpOrder = null;
     let slOrder = null;
 
