@@ -20,7 +20,7 @@
       </div>
       <div class="flex flex-wrap gap-3">
         <a href="/binance.html" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium px-4 py-2.5 rounded-xl transition">Binance Paneline Geç →</a>
-        <button id="btnRefresh" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-xl transition shadow-lg">Verileri Yenile</button>
+        <button id="btnRefresh" type="button" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-xl transition shadow-lg cursor-pointer">Verileri Yenile</button>
       </div>
     </div>
 
@@ -28,10 +28,10 @@
     <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
       <div class="flex flex-wrap gap-2 items-center">
         <span class="text-xs text-slate-400 font-semibold uppercase mr-1">Dönem:</span>
-        <button data-range="today" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Bugün</button>
-        <button data-range="7d" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Son 7 Gün</button>
-        <button data-range="30d" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Son 30 Gün</button>
-        <button data-range="all" class="range-btn bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition">Tümü</button>
+        <button type="button" data-range="today" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer">Bugün</button>
+        <button type="button" data-range="7d" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer">Son 7 Gün</button>
+        <button type="button" data-range="30d" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer">Son 30 Gün</button>
+        <button type="button" data-range="all" class="range-btn bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Tümü</button>
       </div>
 
       <div class="flex flex-wrap gap-3 items-center">
@@ -183,4 +183,3 @@
 
         const coinSelect = document.getElementById("coinFilter");
         const prevCoin = coinSelect.value;
-        const symbols = Array.from(new Set((store.recentTrades || []).map(t => t.symbol))).sort();
