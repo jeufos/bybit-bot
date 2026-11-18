@@ -1,0 +1,175 @@
+export default function handler(req, res) {
+  const b = (req.query.b || "bybit").toLowerCase() === "binance" ? "binance" : "bybit";
+  const isBinance = b === "binance";
+
+  const title = isBinance ? "Binance Demo Bot - Performans Paneli" : "Bybit Demo Bot - Performans Paneli";
+  const badge = isBinance ? "BINANCE FUTURES TESTNET" : "BYBIT DEMO TRADING";
+  const otherLink = isBinance ? "/api/panel?b=bybit" : "/api/panel?b=binance";
+  const otherText = isBinance ? "Bybit Paneline Geç →" : "Binance Paneline Geç →";
+  const accentColor = isBinance ? "yellow" : "amber";
+
+  const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-800 pb-6">
+      <div>
+        <span class="bg-${accentColor}-500/20 text-${accentColor}-400 text-xs font-bold px-3 py-1 rounded-full">${badge}</span>
+        <h1 class="text-3xl font-bold mt-2 text-white">${title}</h1>
+      </div>
+      <div class="flex gap-3">
+        <a href="${otherLink}" class="bg-slate-800 hover:bg-slate-700 text-sm px-4 py-2 rounded-lg transition">${otherText}</a>
+        <button onclick="loadData()" class="bg-${accentColor}-500 hover:bg-${accentColor}-600 text-slate-950 font-semibold text-sm px-4 py-2 rounded-lg transition">Yenile</button>
+      </div>
+    </div>
+
+    <div id="loading" class="text-center py-12 text-slate-400">Veriler borsadan çekiliyor...</div>
+
+    <div id="dashboard" class="hidden space-y-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <div class="text-slate-400 text-xs uppercase">Toplam Net Kâr/Zarar</div>
+          <div id="totalPnl" class="text-2xl font-bold mt-1">0.00 USDT</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <div class="text-slate-400 text-xs uppercase">Başarı Oranı (Win Rate)</div>
+          <div id="winRate" class="text-2xl font-bold mt-1 text-sky-400">%0.0</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <div class="text-slate-400 text-xs uppercase">Toplam Kapanan İşlem</div>
+          <div id="totalTrades" class="text-2xl font-bold mt-1">0</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+          <div class="text-slate-400 text-xs uppercase">Kazanan / Kaybeden</div>
+          <div id="winLoss" class="text-2xl font-bold mt-1"><span class="text-emerald-400">0</span> / <span class="text-rose-400">0</span></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800 font-semibold text-${accentColor}-400">Açık Pozisyonlar</div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase">
+              <tr>
+                <th class="p-4">Parite</th>
+                <th class="p-4">Yön</th>
+                <th class="p-4">Miktar</th>
+                <th class="p-4">Giriş Fiyatı</th>
+                <th class="p-4">Anlık Fiyat</th>
+                <th class="p-4">Anlık Kâr/Zarar</th>
+              </tr>
+            </thead>
+            <tbody id="openPositionsBody" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div class="p-4 border-b border-slate-800 font-semibold text-emerald-400">En İyi Performans Gösteren Pariteler</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase">
+                <tr>
+                  <th class="p-3">Parite</th>
+                  <th class="p-3">İşlem</th>
+                  <th class="p-3">Başarı</th>
+                  <th class="p-3">Net PnL</th>
+                </tr>
+              </thead>
+              <tbody id="bestPairsBody" class="divide-y divide-slate-800"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div class="p-4 border-b border-slate-800 font-semibold text-slate-200">Son Kapanan İşlemler</div>
+          <div class="overflow-x-auto max-h-96">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase">
+                <tr>
+                  <th class="p-3">Parite</th>
+                  <th class="p-3">Tarih</th>
+                  <th class="p-3">Net PnL</th>
+                </tr>
+              </thead>
+              <tbody id="recentTradesBody" class="divide-y divide-slate-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const EXCHANGE = "${b}";
+
+    async function loadData() {
+      document.getElementById("loading").classList.remove("hidden");
+      document.getElementById("dashboard").classList.add("hidden");
+
+      try {
+        const res = await fetch("/api/stats?exchange=" + EXCHANGE);
+        const data = await res.json();
+
+        const pnlEl = document.getElementById("totalPnl");
+        pnlEl.textContent = (data.summary.totalPnl >= 0 ? "+" : "") + data.summary.totalPnl.toFixed(2) + " USDT";
+        pnlEl.className = "text-2xl font-bold mt-1 " + (data.summary.totalPnl >= 0 ? "text-emerald-400" : "text-rose-400");
+
+        document.getElementById("winRate").textContent = "%" + data.summary.winRate;
+        document.getElementById("totalTrades").textContent = data.summary.totalTrades;
+        document.getElementById("winLoss").innerHTML = '<span class="text-emerald-400">' + data.summary.wins + '</span> / <span class="text-rose-400">' + data.summary.losses + '</span>';
+
+        const openBody = document.getElementById("openPositionsBody");
+        openBody.innerHTML = data.openPositions.length === 0
+          ? '<tr><td colspan="6" class="p-4 text-center text-slate-500">Şu an açık pozisyon yok.</td></tr>'
+          : data.openPositions.map(p => '<tr>' +
+              '<td class="p-4 font-bold">' + p.symbol + ' <span class="text-xs text-slate-400">' + p.leverage + 'x</span></td>' +
+              '<td class="p-4"><span class="px-2 py-0.5 rounded text-xs font-bold ' + (p.side === "LONG" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400") + '">' + p.side + '</span></td>' +
+              '<td class="p-4">' + p.size + '</td>' +
+              '<td class="p-4">' + p.entryPrice + '</td>' +
+              '<td class="p-4">' + p.markPrice + '</td>' +
+              '<td class="p-4 font-bold ' + (p.unrealizedPnl >= 0 ? "text-emerald-400" : "text-rose-400") + '">' + p.unrealizedPnl.toFixed(2) + ' USDT</td>' +
+            '</tr>').join("");
+
+        const pairsBody = document.getElementById("bestPairsBody");
+        pairsBody.innerHTML = data.bestPairs.length === 0
+          ? '<tr><td colspan="4" class="p-4 text-center text-slate-500">Henüz kapanmış işlem verisi yok.</td></tr>'
+          : data.bestPairs.map(pair => '<tr>' +
+              '<td class="p-3 font-semibold">' + pair.symbol + '</td>' +
+              '<td class="p-3">' + pair.trades + '</td>' +
+              '<td class="p-3 text-sky-400">%' + pair.winRate + '</td>' +
+              '<td class="p-3 font-bold ' + (pair.pnl >= 0 ? "text-emerald-400" : "text-rose-400") + '">' + (pair.pnl >= 0 ? "+" : "") + pair.pnl.toFixed(2) + ' $</td>' +
+            '</tr>').join("");
+
+        const tradesBody = document.getElementById("recentTradesBody");
+        tradesBody.innerHTML = data.recentTrades.length === 0
+          ? '<tr><td colspan="3" class="p-4 text-center text-slate-500">İşlem geçmişi boş.</td></tr>'
+          : data.recentTrades.map(t => '<tr>' +
+              '<td class="p-3 font-semibold">' + t.symbol + '</td>' +
+              '<td class="p-3 text-xs text-slate-400">' + new Date(t.time).toLocaleString("tr-TR") + '</td>' +
+              '<td class="p-3 font-bold ' + (t.pnl >= 0 ? "text-emerald-400" : "text-rose-400") + '">' + (t.pnl >= 0 ? "+" : "") + t.pnl.toFixed(2) + ' $</td>' +
+            '</tr>').join("");
+
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
+      } catch (e) {
+        document.getElementById("loading").textContent = "Veri çekme hatası: " + e.message;
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  return res.status(200).send(html);
+}
