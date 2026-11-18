@@ -25,7 +25,7 @@ export default function handler(req, res) {
 <body class="bg-[#090d16] text-slate-100 min-h-screen p-4 md:p-6 font-sans">
   <div class="max-w-7xl mx-auto space-y-6">
     
-    <!-- Üst Başlık ve Borsa Geçişi -->
+    <!-- Üst Başlık -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900/80 border border-slate-800/80 p-5 rounded-2xl gap-4">
       <div>
         <div class="flex items-center gap-2">
@@ -42,7 +42,6 @@ export default function handler(req, res) {
 
     <!-- Gelişmiş Filtre Çubuğu -->
     <div class="bg-slate-900/80 border border-slate-800/80 p-4 rounded-2xl flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
-      <!-- Hızlı Tarih Butonları -->
       <div class="flex flex-wrap gap-2 items-center">
         <span class="text-xs text-slate-400 font-semibold uppercase mr-1">Dönem:</span>
         <button onclick="setQuickRange('today', this)" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Bugün</button>
@@ -51,7 +50,6 @@ export default function handler(req, res) {
         <button onclick="setQuickRange('all', this)" class="range-btn bg-sky-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">Tümü</button>
       </div>
 
-      <!-- Özel Tarih, Coin ve Yön Seçiciler -->
       <div class="flex flex-wrap gap-3 items-center">
         <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
           <span class="text-xs text-slate-500">Başlangıç:</span>
@@ -76,7 +74,7 @@ export default function handler(req, res) {
 
     <div id="dashboard" class="hidden space-y-6">
       
-      <!-- 6'lı Gelişmiş KPI Kartları -->
+      <!-- 6'lı KPI Kartları -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
           <div class="text-slate-400 text-[11px] font-semibold uppercase">Net Kâr / Zarar</div>
@@ -104,9 +102,8 @@ export default function handler(req, res) {
         </div>
       </div>
 
-      <!-- Kümülatif Kâr/Zarar Grafiği + Açık Pozisyonlar -->
+      <!-- Kümülatif PnL Grafiği + Parite Sıralaması -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Bakiye Eğrisi -->
         <div class="lg:col-span-2 bg-slate-900/90 border border-slate-800 p-5 rounded-2xl">
           <div class="flex justify-between items-center mb-4">
             <h2 class="font-bold text-slate-200 text-sm uppercase tracking-wider">Kümülatif PnL Eğrisi (USDT)</h2>
@@ -117,7 +114,6 @@ export default function handler(req, res) {
           </div>
         </div>
 
-        <!-- En İyi & En Kötü Pariteler -->
         <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
           <div class="p-4 border-b border-slate-800 font-bold text-sm uppercase tracking-wider text-emerald-400">Parite Sıralaması</div>
           <div class="overflow-y-auto max-h-72 flex-1">
@@ -136,7 +132,7 @@ export default function handler(req, res) {
         </div>
       </div>
 
-      <!-- Açık Pozisyonlar Tablosu -->
+      <!-- Açık Pozisyonlar -->
       <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden">
         <div class="p-4 border-b border-slate-800 flex justify-between items-center">
           <span class="font-bold text-sm uppercase tracking-wider" style="color: ${themeHex}">Anlık Açık Pozisyonlar</span>
@@ -166,3 +162,7 @@ export default function handler(req, res) {
           <span id="filteredCountBadge" class="text-xs text-slate-400">0 İşlem</span>
         </div>
         <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-slate-950/60 text-slate-400 text-xs uppercase">
+              <tr>
+                <th class="p-3.5">Parite</th>
