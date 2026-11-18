@@ -1,8 +1,27 @@
+import { neon } from "@neondatabase/serverless";
+
 export const config = {
   api: {
     bodyParser: false,
   },
 };
+
+const sql = neon(process.env.DATABASE_URL);
+
+const recentSignals = new Map();
+
+function isDuplicate(action, symbol) {
+  const key = `${action}_${symbol}`;
+  const now = Date.now();
+  const last = recentSignals.get(key);
+
+  if (last && now - last < 30000) {
+    return true;
+  }
+
+  recentSignals.set(key, now);
+  return false;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -35,6 +54,12 @@ export default async function handler(req, res) {
       .replace(".P", "")
       .toUpperCase();
     const signalPrice = parseFloat(parts.at(startIndex + 2));
+
+    if (isNaN(signalPrice) || signalPrice <= 0) {
+      return res.status(400).send(
+        "Geçersiz fiyat: " + parts.at(startIndex + 2)
+      );
+    }
 
     const apiKey = process.env.BINANCE_API_KEY;
     const apiSecret = process.env.BINANCE_API_SECRET;
@@ -101,7 +126,7 @@ export default async function handler(req, res) {
       return await httpsRequest(demoHost, fullPath, method, headers);
     }
 
-    // 1. Parite kuralları
+    // 1. Parite kurallarını çek
     const exchangeInfo = await httpsRequest(
       demoHost,
       "/fapi/v1/exchangeInfo",
@@ -138,15 +163,7 @@ export default async function handler(req, res) {
       ? tickSizeStr.split(".").at(1).replace(/0+$/, "").length
       : 0;
 
-    function formatPrice(priceStr) {
-      if (!priceStr) return "";
-      const num = parseFloat(priceStr);
-      if (isNaN(num) || num <= 0) return "";
-      const rounded = Math.round(num / tickSize) * tickSize;
-      return rounded.toFixed(priceDecimals);
-    }
-
-    // 2. Mevcut pozisyonu kontrol et
+    // 2. Mevcut açık pozisyonu kontrol et
     const posList = await sendBinanceRequest("GET", "/fapi/v2/positionRisk", {
       symbol,
     });
@@ -154,8 +171,53 @@ export default async function handler(req, res) {
       ? posList.find((p) => parseFloat(p.positionAmt) !== 0)
       : null;
 
-    // 3. TP / SL sinyali geldiğinde pozisyonu kapat
+    // 3. TP / SL sinyali geldiğinde pozisyonu kapat + DB’yi güncelle
     if (action === "TP" || action === "SL") {
+      const openTrade = await sql`
+        SELECT * FROM trades
+        WHERE symbol = ${symbol}
+          AND status = 'OPEN'
+        ORDER BY id DESC
+        LIMIT 1
+      `;
+
+      if (openTrade.length === 0) {
+        return res.status(200).json({
+          status: "Ignored",
+          reason: "Kapatılacak açık pozisyon yok.",
+        });
+      }
+
+      const trade = openTrade[0];
+      const entryPrice = parseFloat(trade.entry_price);
+      const side = trade.side;
+
+      const notional = 10 * 10;
+      const qty = notional / entryPrice;
+
+      let grossPnl;
+      if (side === "LONG") {
+        grossPnl = (signalPrice - entryPrice) * qty;
+      } else {
+        grossPnl = (entryPrice - signalPrice) * qty;
+      }
+
+      const fees = notional * 0.0005 * 2;
+      const netPnl = grossPnl - fees;
+      const netPct = (netPnl / 10) * 100;
+
+      await sql`
+        UPDATE trades
+        SET
+          exit_price = ${signalPrice},
+          gross_pnl = ${grossPnl},
+          fees = ${fees},
+          net_pnl = ${netPnl},
+          net_pct = ${netPct},
+          status = 'CLOSED'
+        WHERE id = ${trade.id}
+      `;
+
       if (!activePos) {
         return res.status(200).json({
           status: "Ignored",
@@ -166,7 +228,6 @@ export default async function handler(req, res) {
       const currentAmt = parseFloat(activePos.positionAmt);
       const closeSide = currentAmt > 0 ? "SELL" : "BUY";
 
-      // Varsa bekleyen emirleri temizle
       await sendBinanceRequest("DELETE", "/fapi/v1/allOpenOrders", {
         symbol,
       });
@@ -199,6 +260,13 @@ export default async function handler(req, res) {
     // 4. BUY / SELL kontrolü
     if (action !== "BUY" && action !== "SELL") {
       return res.status(400).send("Geçersiz işlem yönü: " + action);
+    }
+
+    if (isDuplicate(action, symbol)) {
+      return res.status(200).json({
+        status: "Ignored",
+        reason: "Aynı sinyal kısa süre içinde tekrar geldi.",
+      });
     }
 
     const targetSide = action === "BUY" ? "BUY" : "SELL";
@@ -248,7 +316,7 @@ export default async function handler(req, res) {
       targetLeverage = parseInt(levRes.leverage, 10);
     }
 
-    // 7. 10 $ teminat x 10x ile miktar
+    // 7. 10 $ teminat x 10x ile miktar hesapla
     const marginUsdt = 10;
     const positionValueUsdt = marginUsdt * targetLeverage;
     const rawQty = positionValueUsdt / signalPrice;
@@ -256,7 +324,23 @@ export default async function handler(req, res) {
     if (finalQty < minQty) finalQty = minQty;
     const formattedQty = finalQty.toFixed(qtyDecimals);
 
-    // 8. Sadece giriş emri aç; TP/SL bağlanmaz
+    // 8. MIN_NOTIONAL kontrolü
+    const notionalFilter = symbolInfo.filters.find(
+      (f) => f.filterType === "MIN_NOTIONAL" || f.filterType === "NOTIONAL"
+    );
+
+    const minNotional = parseFloat(
+      notionalFilter?.minNotional || notionalFilter?.notional || "0"
+    );
+
+    if (minNotional > 0 && positionValueUsdt < minNotional) {
+      return res.status(400).json({
+        status: "NotionalError",
+        reason: `Bu parite için minimum notional ${minNotional} USDT. Senin notional: ${positionValueUsdt} USDT.`,
+      });
+    }
+
+    // 9. Sadece giriş emri aç; TP/SL bağlanmaz
     const mainOrder = await sendBinanceRequest("POST", "/fapi/v1/order", {
       symbol,
       side: targetSide,
@@ -271,11 +355,35 @@ export default async function handler(req, res) {
       });
     }
 
+    // 10. DB’ye OPEN kaydı ekle
+    let rawTp = "";
+    let rawSl = "";
+
+    for (const item of parts.slice(startIndex + 3)) {
+      if (item.startsWith("TP:")) {
+        const val = item.replace("TP:", "").trim();
+        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawTp = val;
+      }
+      if (item.startsWith("SL:")) {
+        const val = item.replace("SL:", "").trim();
+        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawSl = val;
+      }
+    }
+
+    const side = action === "BUY" ? "LONG" : "SHORT";
+
+    await sql`
+      INSERT INTO trades
+        (action, symbol, side, entry_price, tp_price, sl_price, status)
+      VALUES
+        (${action}, ${symbol}, ${side}, ${signalPrice}, ${rawTp}, ${rawSl}, 'OPEN')
+    `;
+
     return res.status(200).json({
       status: "Opened",
       action,
       symbol,
-      side: targetSide,
+      side,
       appliedLeverage: targetLeverage,
       calculatedQty: formattedQty,
       mainOrder,
