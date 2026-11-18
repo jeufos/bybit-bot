@@ -22,36 +22,19 @@ export default async function handler(req, res) {
 
     const parts = rawText.split("|").map((p) => p.trim());
 
-    const startIndex = (parts.at(0) === "BUY" || parts.at(0) === "SELL" || parts.at(0) === "TP" || parts.at(0) === "SL") ? 0 : 1;
+    const startIndex =
+      parts.at(0) === "BUY" ||
+      parts.at(0) === "SELL" ||
+      parts.at(0) === "TP" ||
+      parts.at(0) === "SL"
+        ? 0
+        : 1;
 
     const action = parts.at(startIndex);
-    const symbol = (parts.at(startIndex + 1) || "").replace(".P", "").toUpperCase();
+    const symbol = (parts.at(startIndex + 1) || "")
+      .replace(".P", "")
+      .toUpperCase();
     const signalPrice = parseFloat(parts.at(startIndex + 2));
-
-    if (action === "TP" || action === "SL") {
-      return res.status(200).json({ status: "Ignored", reason: "TP/SL zaten emre tanımlandı." });
-    }
-
-    if (action !== "BUY" && action !== "SELL") {
-      return res.status(400).send("Geçersiz işlem yönü: " + action);
-    }
-
-    const targetSide = action === "BUY" ? "BUY" : "SELL";
-    const closeSide = action === "BUY" ? "SELL" : "BUY";
-
-    let rawTp = "";
-    let rawSl = "";
-
-    for (const item of parts.slice(startIndex + 3)) {
-      if (item.startsWith("TP:")) {
-        const val = item.replace("TP:", "").trim();
-        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawTp = val;
-      }
-      if (item.startsWith("SL:")) {
-        const val = item.replace("SL:", "").trim();
-        if (val !== "NaN" && val !== "" && parseFloat(val) > 0) rawSl = val;
-      }
-    }
 
     const apiKey = process.env.BINANCE_API_KEY;
     const apiSecret = process.env.BINANCE_API_SECRET;
@@ -64,15 +47,15 @@ export default async function handler(req, res) {
     function httpsRequest(hostname, path, method, headers = {}, body = null) {
       return new Promise((resolve, reject) => {
         const options = {
-          hostname: hostname,
+          hostname,
           port: 443,
-          path: path,
-          method: method,
+          path,
+          method,
           family: 4,
           headers: {
             "User-Agent": "BinanceTradingBot/1.0",
-            ...headers
-          }
+            ...headers,
+          },
         };
 
         const request = https.request(options, (response) => {
@@ -82,7 +65,11 @@ export default async function handler(req, res) {
             try {
               resolve(JSON.parse(data));
             } catch (_e) {
-              reject(new Error(`${path} adımında geçersiz yanıt (HTTP ${response.statusCode}): ${data.slice(0, 120)}`));
+              reject(
+                new Error(
+                  `${path} adımında geçersiz yanıt (HTTP ${response.statusCode}): ${data.slice(0, 120)}`
+                )
+              );
             }
           });
         });
@@ -98,7 +85,7 @@ export default async function handler(req, res) {
       const queryParams = new URLSearchParams({
         ...paramsObj,
         recvWindow: "5000",
-        timestamp: String(timestamp)
+        timestamp: String(timestamp),
       }).toString();
 
       const signature = crypto
@@ -108,34 +95,48 @@ export default async function handler(req, res) {
 
       const fullPath = `${endpoint}?${queryParams}&signature=${signature}`;
       const headers = {
-        "X-MBX-APIKEY": apiKey
+        "X-MBX-APIKEY": apiKey,
       };
 
       return await httpsRequest(demoHost, fullPath, method, headers);
     }
 
-    // 1. Parite Kurallarını Çek
-    const exchangeInfo = await httpsRequest(demoHost, "/fapi/v1/exchangeInfo", "GET");
-    const symbolInfo = (exchangeInfo?.symbols || []).find((s) => s.symbol === symbol);
+    // 1. Parite kuralları
+    const exchangeInfo = await httpsRequest(
+      demoHost,
+      "/fapi/v1/exchangeInfo",
+      "GET"
+    );
+    const symbolInfo = (exchangeInfo?.symbols || []).find(
+      (s) => s.symbol === symbol
+    );
 
     if (!symbolInfo) {
       return res.status(400).json({
         status: "SymbolError",
-        reason: `${symbol} paritesi Binance Futures Demo üzerinde bulunamadı.`
+        reason: `${symbol} paritesi Binance Futures Demo üzerinde bulunamadı.`,
       });
     }
 
-    const lotFilter = symbolInfo.filters.find((f) => f.filterType === "LOT_SIZE");
-    const priceFilter = symbolInfo.filters.find((f) => f.filterType === "PRICE_FILTER");
+    const lotFilter = symbolInfo.filters.find(
+      (f) => f.filterType === "LOT_SIZE"
+    );
+    const priceFilter = symbolInfo.filters.find(
+      (f) => f.filterType === "PRICE_FILTER"
+    );
 
     const stepSizeStr = lotFilter?.stepSize || "0.001";
     const minQty = parseFloat(lotFilter?.minQty || "0.001");
     const stepSize = parseFloat(stepSizeStr);
-    const qtyDecimals = stepSizeStr.includes(".") ? stepSizeStr.split(".").at(1).replace(/0+$/, "").length : 0;
+    const qtyDecimals = stepSizeStr.includes(".")
+      ? stepSizeStr.split(".").at(1).replace(/0+$/, "").length
+      : 0;
 
     const tickSizeStr = priceFilter?.tickSize || "0.01";
     const tickSize = parseFloat(tickSizeStr);
-    const priceDecimals = tickSizeStr.includes(".") ? tickSizeStr.split(".").at(1).replace(/0+$/, "").length : 0;
+    const priceDecimals = tickSizeStr.includes(".")
+      ? tickSizeStr.split(".").at(1).replace(/0+$/, "").length
+      : 0;
 
     function formatPrice(priceStr) {
       if (!priceStr) return "";
@@ -145,13 +146,65 @@ export default async function handler(req, res) {
       return rounded.toFixed(priceDecimals);
     }
 
-    const takeProfit = formatPrice(rawTp);
-    const stopLoss = formatPrice(rawSl);
+    // 2. Mevcut pozisyonu kontrol et
+    const posList = await sendBinanceRequest("GET", "/fapi/v2/positionRisk", {
+      symbol,
+    });
+    const activePos = Array.isArray(posList)
+      ? posList.find((p) => parseFloat(p.positionAmt) !== 0)
+      : null;
 
-    // 2. Mevcut Açık Pozisyonu Kontrol Et
-    const posList = await sendBinanceRequest("GET", "/fapi/v2/positionRisk", { symbol: symbol });
-    const activePos = Array.isArray(posList) ? posList.find((p) => parseFloat(p.positionAmt) !== 0) : null;
+    // 3. TP / SL sinyali geldiğinde pozisyonu kapat
+    if (action === "TP" || action === "SL") {
+      if (!activePos) {
+        return res.status(200).json({
+          status: "Ignored",
+          reason: "Kapatılacak açık pozisyon yok.",
+        });
+      }
 
+      const currentAmt = parseFloat(activePos.positionAmt);
+      const closeSide = currentAmt > 0 ? "SELL" : "BUY";
+
+      // Varsa bekleyen emirleri temizle
+      await sendBinanceRequest("DELETE", "/fapi/v1/allOpenOrders", {
+        symbol,
+      });
+
+      const closeRes = await sendBinanceRequest("POST", "/fapi/v1/order", {
+        symbol,
+        side: closeSide,
+        type: "MARKET",
+        quantity: String(Math.abs(currentAmt)),
+        reduceOnly: "true",
+      });
+
+      if (closeRes.code && closeRes.code !== 200) {
+        return res.status(200).json({
+          status: "CloseError",
+          binanceResponse: closeRes,
+        });
+      }
+
+      return res.status(200).json({
+        status: "Closed",
+        action,
+        symbol,
+        closedQty: Math.abs(currentAmt),
+        closeSide,
+        binanceResponse: closeRes,
+      });
+    }
+
+    // 4. BUY / SELL kontrolü
+    if (action !== "BUY" && action !== "SELL") {
+      return res.status(400).send("Geçersiz işlem yönü: " + action);
+    }
+
+    const targetSide = action === "BUY" ? "BUY" : "SELL";
+    const closeSide = action === "BUY" ? "SELL" : "BUY";
+
+    // 5. Ters sinyal gelirse önce pozisyonu kapat
     if (activePos) {
       const currentAmt = parseFloat(activePos.positionAmt);
       const currentSide = currentAmt > 0 ? "BUY" : "SELL";
@@ -159,113 +212,78 @@ export default async function handler(req, res) {
       if (currentSide === targetSide) {
         return res.status(200).json({
           status: "Ignored",
-          reason: `Zaten açık bir ${currentSide} pozisyonu mevcut.`
+          reason: `Zaten açık bir ${currentSide} pozisyonu mevcut.`,
         });
       }
 
-      // Ters yönde sinyal geldiyse mevcut emirleri iptal et ve pozisyonu kapat
-      await sendBinanceRequest("DELETE", "/fapi/v1/allOpenOrders", { symbol: symbol });
-      await sendBinanceRequest("DELETE", "/fapi/v1/algoOpenOrders", { symbol: symbol });
+      await sendBinanceRequest("DELETE", "/fapi/v1/allOpenOrders", {
+        symbol,
+      });
 
       const closeRes = await sendBinanceRequest("POST", "/fapi/v1/order", {
-        symbol: symbol,
+        symbol,
         side: closeSide,
         type: "MARKET",
         quantity: String(Math.abs(currentAmt)),
-        reduceOnly: "true"
+        reduceOnly: "true",
       });
 
       if (closeRes.code && closeRes.code !== 200) {
         return res.status(200).json({
           status: "CloseError",
-          binanceResponse: closeRes
+          binanceResponse: closeRes,
         });
       }
 
-      // Kapanışın borsada işlenmesi için 300ms bekle
       await sleep(300);
     }
 
-    // 3. Kaldıracı 10x Yap
+    // 6. Kaldıraç 10x
     let targetLeverage = 10;
     const levRes = await sendBinanceRequest("POST", "/fapi/v1/leverage", {
-      symbol: symbol,
-      leverage: String(targetLeverage)
+      symbol,
+      leverage: String(targetLeverage),
     });
     if (levRes?.leverage) {
       targetLeverage = parseInt(levRes.leverage, 10);
     }
 
-    // 4. 10 Dolar Teminat x Kaldıraç ile Miktar Hesapla
+    // 7. 10 $ teminat x 10x ile miktar
     const marginUsdt = 10;
     const positionValueUsdt = marginUsdt * targetLeverage;
-    let rawQty = positionValueUsdt / signalPrice;
+    const rawQty = positionValueUsdt / signalPrice;
     let finalQty = Math.floor(rawQty / stepSize) * stepSize;
     if (finalQty < minQty) finalQty = minQty;
     const formattedQty = finalQty.toFixed(qtyDecimals);
 
-    // 5. Ana Piyasa Emrini Aç
+    // 8. Sadece giriş emri aç; TP/SL bağlanmaz
     const mainOrder = await sendBinanceRequest("POST", "/fapi/v1/order", {
-      symbol: symbol,
+      symbol,
       side: targetSide,
       type: "MARKET",
-      quantity: formattedQty
+      quantity: formattedQty,
     });
 
     if (mainOrder.code && mainOrder.code !== 200) {
       return res.status(200).json({
         status: "OrderError",
-        binanceResponse: mainOrder
-      });
-    }
-
-    // Pozisyonun hesaba işlenmesi için 350ms bekle
-    await sleep(350);
-
-    // 6. Yeni Algo Order API ile TP ve SL Bağla
-    let tpOrder = null;
-    let slOrder = null;
-
-    if (takeProfit) {
-      tpOrder = await sendBinanceRequest("POST", "/fapi/v1/algoOrder", {
-        algoType: "CONDITIONAL",
-        symbol: symbol,
-        side: closeSide,
-        type: "TAKE_PROFIT_MARKET",
-        triggerPrice: takeProfit,
-        closePosition: "true",
-        workingType: "MARK_PRICE"
-      });
-    }
-
-    if (stopLoss) {
-      slOrder = await sendBinanceRequest("POST", "/fapi/v1/algoOrder", {
-        algoType: "CONDITIONAL",
-        symbol: symbol,
-        side: closeSide,
-        type: "STOP_MARKET",
-        triggerPrice: stopLoss,
-        closePosition: "true",
-        workingType: "MARK_PRICE"
+        binanceResponse: mainOrder,
       });
     }
 
     return res.status(200).json({
-      status: "Completed",
-      symbol: symbol,
+      status: "Opened",
+      action,
+      symbol,
+      side: targetSide,
       appliedLeverage: targetLeverage,
       calculatedQty: formattedQty,
-      tp: takeProfit,
-      sl: stopLoss,
-      mainOrder: mainOrder,
-      tpOrder: tpOrder,
-      slOrder: slOrder
+      mainOrder,
     });
-
   } catch (err) {
     return res.status(500).json({
       status: "CodeError",
-      message: err.message
+      message: err.message,
     });
   }
 }
