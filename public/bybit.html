@@ -154,21 +154,21 @@
         db = data;
         const coinSel = document.getElementById("coinFilter");
         const prev = coinSel.value;
-        const coins = Array.from(new Set((db.recentTrades || []).map(t => t.symbol))).sort();
+        const coins = Array.from(new Set((db.recentTrades || []).map(function(t) { return t.symbol; }))).sort();
         coinSel.innerHTML = '<option value="ALL">Tüm Pariteler (' + coins.length + ')</option>' +
-          coins.map(c => '<option value="' + c + '">' + c + '</option>').join("");
+          coins.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join("");
         if (coins.includes(prev)) coinSel.value = prev;
 
         updateUI();
         msg.style.display = "none";
         dash.style.display = "flex";
       } catch (e) {
-        msg.innerHTML = '<span class="red">Veri Alınamadı: ' + e.message + '</span><br><small>api/stats.js dosyasının yüklü olduğundan emin olun.</small>';
+        msg.innerHTML = '<span class="red">Veri Alınamadı: ' + e.message + '</span>';
       }
     }
 
     function setQuickDate(type, btn) {
-      document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".range-btn").forEach(function(b) { b.classList.remove("active"); });
       if (btn) btn.classList.add("active");
 
       const sIn = document.getElementById("startDate");
