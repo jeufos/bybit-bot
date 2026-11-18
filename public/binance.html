@@ -16,7 +16,6 @@
     .btn { background: #1f2937; color: #e2e8f0; border: 1px solid #374151; padding: 9px 16px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn:hover { background: #374151; }
     .btn-primary { background: #facc15; color: #090d16; border: none; }
-    .btn-primary:hover { background: #fde047; }
     .filters { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
     .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .range-btn { background: #1f2937; color: #cbd5e1; border: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
@@ -50,7 +49,7 @@
         <h1>Binance Bot Analiz Merkezi</h1>
       </div>
       <div class="btn-group">
-        <a href="/bybit.html" class="btn">Bybit Paneline Geç →</a>
+        <a href="/bybit.html?v=3" class="btn">Bybit Paneline Geç →</a>
         <button type="button" id="btnRefresh" class="btn btn-primary">Verileri Yenile</button>
       </div>
     </div>
@@ -64,8 +63,8 @@
         <button type="button" class="range-btn active" data-range="all">Tümü</button>
       </div>
       <div class="filter-row">
-        <input type="date" id="startDate" title="Başlangıç Tarihi" />
-        <input type="date" id="endDate" title="Bitiş Tarihi" />
+        <input type="date" id="startDate" />
+        <input type="date" id="endDate" />
         <select id="coinFilter"><option value="ALL">Tüm Pariteler</option></select>
         <select id="resultFilter">
           <option value="ALL">Tüm Sonuçlar</option>
@@ -146,7 +145,7 @@
       dash.style.display = "none";
 
       try {
-        const res = await fetch("/api/stats?exchange=" + EXCHANGE);
+        const res = await fetch("/api/stats?exchange=" + EXCHANGE + "&t=" + Date.now());
         if (!res.ok) throw new Error("Sunucu hatası: HTTP " + res.status);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -179,3 +178,5 @@
       if (type === "today") { sIn.value = today; eIn.value = today; }
       else if (type === "7d") { sIn.value = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10); eIn.value = today; }
       else if (type === "30d") { sIn.value = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10); eIn.value = today; }
+      else if (type === "all") { sIn.value = ""; eIn.value = ""; }
+      updateUI();
