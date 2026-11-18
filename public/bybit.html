@@ -141,7 +141,7 @@
       app.style.display = "none";
 
       try {
-        const res = await fetch("/api/stats?exchange=" + BORSA + "&t=" + Date.now());
+        const res = await fetch("/api/stats.js?exchange=" + BORSA + "&t=" + Date.now());
         const json = await res.json();
         if (json.error) throw new Error(json.error);
         veri = json;
@@ -149,11 +149,11 @@
         const sel = document.getElementById("fCoin");
         const eski = sel.value;
         const set = new Set();
-        (veri.recentTrades || []).forEach(x => set.add(x.symbol));
+        (veri.recentTrades || new Array()).forEach(function(x) { set.add(x.symbol); });
         const liste = Array.from(set).sort();
 
         sel.innerHTML = '<option value="ALL">Tüm Pariteler (' + liste.length + ')</option>' +
-          liste.map(c => '<option value="' + c + '">' + c + '</option>').join("");
+          liste.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join("");
         if (liste.includes(eski)) sel.value = eski;
 
         ciz();
@@ -165,7 +165,7 @@
     }
 
     function tarihSec(tip, btn) {
-      document.querySelectorAll(".rbtn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".rbtn").forEach(function(b) { b.classList.remove("active"); });
       if (btn) btn.classList.add("active");
       const s = document.getElementById("dStart");
       const e = document.getElementById("dEnd");
@@ -188,7 +188,7 @@
       const t1 = sv ? new Date(sv + "T00:00:00").getTime() : 0;
       const t2 = ev ? new Date(ev + "T23:59:59").getTime() : Infinity;
 
-      const liste = (veri.recentTrades || []).filter(t => {
+      const liste = (veri.recentTrades || new Array()).filter(function(t) {
         if (t.time < t1 || t.time > t2) return false;
         if (coin !== "ALL" && t.symbol !== coin) return false;
         if (resTip === "WIN" && t.pnl <= 0) return false;
@@ -199,7 +199,81 @@
       let net = 0, gw = 0, gl = 0, wc = 0, lc = 0, mw = 0, ml = 0;
       const pMap = {};
 
-      liste.forEach(t => {
+      liste.forEach(function(t) {
         net += t.pnl;
         if (t.pnl > 0) { wc++; gw += t.pnl; if (t.pnl > mw) mw = t.pnl; }
-        else if (t.pnl < 0) { lc++; gl += Math.abs(t.pnl); if (t.pnl < ml) ml = t.pnl; }})}
+else if (t.pnl < 0) { lc++; gl += Math.abs(t.pnl); if (t.pnl < ml) ml = t.pnl; }
+if (!pMap[t.symbol]) pMap[t.symbol] = { s: t.symbol, c: 0, w: 0, p: 0 };
+pMap[t.symbol].c++;
+pMap[t.symbol].p += t.pnl;
+if (t.pnl > 0) pMap[t.symbol].w++;
+});
+const tot = wc + lc;
+const wr = tot ? ((wc / tot) * 100).toFixed(1) : "0.0";
+const pf = gl > 0 ? (gw / gl).toFixed(2) : (gw > 0 ? "∞" : "0.00");
+const elPnl = document.getElementById("kPnl");
+elPnl.textContent = (net >= 0 ? "+" : "") + net.toFixed(2) + " $";
+elPnl.className = "kv " + (net >= 0 ? "green" : "red");
+document.getElementById("kWin").textContent = "%" + wr;
+document.getElementById("kPf").textContent = pf;
+document.getElementById("kCnt").textContent = tot + " (" + wc + "K / " + lc + "Z)";
+document.getElementById("kAvg").innerHTML = '+' + (wc ? (gw / wc).toFixed(2) : "0.00") + '$ / -' + (lc ? (gl / lc).toFixed(2) : "0.00") + '$';
+document.getElementById("kExt").innerHTML = '+' + mw.toFixed(2) + '$ / ' + ml.toFixed(2) + '$';
+const sirali = Object.values(pMap).sort(function(a, b) { return b.p - a.p; });
+document.getElementById("tPairs").innerHTML = sirali.length === 0
+? 'Veri yok'
+: sirali.map(function(x) { return '' + x.s + '' + x.c + '%' + ((x.w / x.c) * 100).toFixed(0) + '' + (x.p >= 0 ? '+' : '') + x.p.toFixed(2) + '$'; }).join("");
+document.getElementById("hCnt").textContent = liste.length + " İşlem";
+document.getElementById("tHist").innerHTML = liste.length === 0
+? 'İşlem yok'
+: liste.map(function(t) { return '' + t.symbol + '' + new Date(t.time).toLocaleString("tr-TR") + '' + t.entryPrice + ' → ' + t.exitPrice + '' + (t.pnl >= 0 ? '+' : '') + t.pnl.toFixed(2) + '$'; }).join("");
+const acik = (veri.openPositions || new Array()).filter(function(p) { return coin === "ALL" || p.symbol === coin; });
+document.getElementById("oCnt").textContent = acik.length + " Aktif";
+document.getElementById("tOpen").innerHTML = acik.length === 0
+? 'Açık pozisyon yok'
+: acik.map(function(p) { return '' + p.symbol + ' ' + p.leverage + 'x' + p.side + '' + p.size + '' + p.entryPrice + '' + p.markPrice + '' + (p.unrealizedPnl >= 0 ? '+' : '') + p.unrealizedPnl.toFixed(2) + '$'; }).join("");
+grafikCiz(liste);
+}
+function grafikCiz(trades) {
+const box = document.getElementById("cBox");
+const badge = document.getElementById("cBadge");
+const sirali = trades.slice().sort(function(a, b) { return a.time - b.time; });
+if (sirali.length === 0) {
+badge.textContent = "0.00 $";
+box.innerHTML = 'Grafik verisi yok';
+return;
+}
+let toplam = 0;
+const noktalar = new Array();
+noktalar.push(0);
+sirali.forEach(function(t) {
+toplam += t.pnl;
+noktalar.push(toplam);
+});
+badge.textContent = (toplam >= 0 ? "+" : "") + toplam.toFixed(2) + " $";
+badge.className = "tag " + (toplam >= 0 ? "tlong" : "tshort");
+const W = 600, H = 180, P = 15;
+const min = Math.min.apply(null, noktalar);
+const max = Math.max.apply(null, noktalar);
+const fark = (max - min) || 1;
+const pts = noktalar.map(function(v, i) {
+const x = P + (i / (noktalar.length - 1)) * (W - P * 2);
+const y = H - P - ((v - min) / fark) * (H - P * 2);
+return x.toFixed(1) + "," + y.toFixed(1);
+});
+const zY = (H - P - ((0 - min) / fark) * (H - P * 2)).toFixed(1);
+const renk = toplam >= 0 ? "#10b981" : "#f43f5e";
+box.innerHTML = '' +
+'' +
+'<polyline fill="none" stroke="' + renk + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="' + pts.join(" ") + '"/>' +
+'';
+}
+document.getElementById("refreshBtn").onclick = yukle;
+document.getElementById("dStart").onchange = function() { tarihSec("custom", null); };
+document.getElementById("dEnd").onchange = function() { tarihSec("custom", null); };
+document.getElementById("fCoin").onchange = ciz;
+document.getElementById("fRes").onchange = ciz;
+document.querySelectorAll(".rbtn").forEach(function(b) {
+b.onclick = function() { tarihSec(b.dataset.r, b); };
+});
+yukle();

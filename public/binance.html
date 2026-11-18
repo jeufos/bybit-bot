@@ -5,40 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Binance Demo - Pro Analiz</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background: #090d16; color: #f1f5f9; padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-    .card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; padding: 20px; }
-    .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px; }
-    .badge { color: #facc15; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
-    h1 { font-size: 24px; margin-top: 4px; color: #ffffff; }
-    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn { background: #1f2937; color: #e2e8f0; border: 1px solid #374151; padding: 9px 16px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .btn:hover { background: #374151; }
+    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; padding: 18px; }
+    .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .badge { color: #facc15; font-size: 12px; font-weight: 700; }
+    h1 { font-size: 22px; margin-top: 4px; color: #fff; }
+    .btn { background: #1f2937; color: #e2e8f0; border: 1px solid #374151; padding: 9px 15px; border-radius: 9px; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-primary { background: #facc15; color: #090d16; border: none; }
-    .filters { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
-    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .range-btn { background: #1f2937; color: #cbd5e1; border: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
-    .range-btn.active { background: #facc15; color: #090d16; }
-    input[type="date"], select { background: #090d16; color: #f1f5f9; border: 1px solid #374151; padding: 7px 10px; border-radius: 8px; font-size: 12px; color-scheme: dark; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
-    .kpi-box { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 16px; }
-    .kpi-title { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; }
-    .kpi-val { font-size: 20px; font-weight: 800; margin-top: 6px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .rbtn { background: #1f2937; color: #cbd5e1; border: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .rbtn.active { background: #facc15; color: #090d16; }
+    input, select { background: #090d16; color: #f1f5f9; border: 1px solid #374151; padding: 7px 10px; border-radius: 8px; font-size: 12px; color-scheme: dark; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; }
+    .kpi { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 14px; }
+    .kt { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; }
+    .kv { font-size: 19px; font-weight: 800; margin-top: 5px; }
     .green { color: #10b981; }
     .red { color: #f43f5e; }
     .blue { color: #38bdf8; }
-    .mid-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-    @media (max-width: 850px) { .mid-grid { grid-template-columns: 1fr; } }
-    .chart-box { height: 230px; background: #090d16; border: 1px solid #1f2937; border-radius: 10px; margin-top: 12px; display: flex; align-items: center; justify-content: center; padding: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-    th { text-align: left; color: #94a3b8; font-size: 11px; text-transform: uppercase; padding: 10px; border-bottom: 1px solid #1f2937; background: #090d16; }
-    td { padding: 10px; border-bottom: 1px solid #1f2937; }
-    .scroll-box { max-height: 280px; overflow-y: auto; }
+    .grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+    @media (max-width: 850px) { .grid2 { grid-template-columns: 1fr; } }
+    .chart { height: 220px; background: #090d16; border: 1px solid #1f2937; border-radius: 10px; margin-top: 10px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    th { text-align: left; color: #94a3b8; font-size: 11px; text-transform: uppercase; padding: 9px; border-bottom: 1px solid #1f2937; background: #090d16; position: sticky; top: 0; }
+    td { padding: 9px; border-bottom: 1px solid #1f2937; }
+    .scroll { max-height: 270px; overflow-y: auto; }
     .tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-    .tag-long { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-    .tag-short { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
-    .status-msg { text-align: center; padding: 30px; color: #94a3b8; font-size: 14px; }
+    .tlong { background: rgba(16,185,129,0.15); color: #10b981; }
+    .tshort { background: rgba(244,63,94,0.15); color: #f43f5e; }
   </style>
 </head>
 <body>
@@ -48,25 +45,24 @@
         <div class="badge">● BINANCE FUTURES TESTNET</div>
         <h1>Binance Bot Analiz Merkezi</h1>
       </div>
-      <div class="btn-group">
-        <a href="/bybit.html?v=3" class="btn">Bybit Paneline Geç →</a>
-        <button type="button" id="btnRefresh" class="btn btn-primary">Verileri Yenile</button>
+      <div class="row">
+        <a href="/bybit.html" class="btn">Bybit Paneline Geç →</a>
+        <button type="button" id="refreshBtn" class="btn btn-primary">Verileri Yenile</button>
       </div>
     </div>
 
     <div class="card filters">
-      <div class="filter-row">
-        <span style="font-size:12px; color:#94a3b8; font-weight:700;">DÖNEM:</span>
-        <button type="button" class="range-btn" data-range="today">Bugün</button>
-        <button type="button" class="range-btn" data-range="7d">Son 7 Gün</button>
-        <button type="button" class="range-btn" data-range="30d">Son 30 Gün</button>
-        <button type="button" class="range-btn active" data-range="all">Tümü</button>
+      <div class="row">
+        <button type="button" class="rbtn" data-r="today">Bugün</button>
+        <button type="button" class="rbtn" data-r="7d">Son 7 Gün</button>
+        <button type="button" class="rbtn" data-r="30d">Son 30 Gün</button>
+        <button type="button" class="rbtn active" data-r="all">Tümü</button>
       </div>
-      <div class="filter-row">
-        <input type="date" id="startDate" />
-        <input type="date" id="endDate" />
-        <select id="coinFilter"><option value="ALL">Tüm Pariteler</option></select>
-        <select id="resultFilter">
+      <div class="row">
+        <input type="date" id="dStart" />
+        <input type="date" id="dEnd" />
+        <select id="fCoin"><option value="ALL">Tüm Pariteler</option></select>
+        <select id="fRes">
           <option value="ALL">Tüm Sonuçlar</option>
           <option value="WIN">Sadece Kârlı</option>
           <option value="LOSS">Sadece Zararlı</option>
@@ -74,32 +70,32 @@
       </div>
     </div>
 
-    <div id="statusMsg" class="card status-msg">Veriler Binance Demo'dan yükleniyor...</div>
+    <div id="msgBox" class="card" style="text-align:center; color:#94a3b8;">Veriler yükleniyor...</div>
 
-    <div id="dashboard" style="display:none; flex-direction:column; gap:20px;">
-      <div class="kpi-grid">
-        <div class="kpi-box"><div class="kpi-title">Net Kâr / Zarar</div><div id="kpiPnl" class="kpi-val">0.00 $</div></div>
-        <div class="kpi-box"><div class="kpi-title">Başarı Oranı</div><div id="kpiWin" class="kpi-val blue">%0.0</div></div>
-        <div class="kpi-box"><div class="kpi-title">Profit Factor</div><div id="kpiPf" class="kpi-val" style="color:#c084fc;">0.00</div></div>
-        <div class="kpi-box"><div class="kpi-title">İşlem (Kazanan/Kaybeden)</div><div id="kpiCount" class="kpi-val">0</div></div>
-        <div class="kpi-box"><div class="kpi-title">Ort. Kazanç / Kayıp</div><div id="kpiAvg" class="kpi-val" style="font-size:15px;">+0.00$ / -0.00$</div></div>
-        <div class="kpi-box"><div class="kpi-title">En İyi / En Kötü</div><div id="kpiExt" class="kpi-val" style="font-size:15px;">+0.00$ / -0.00$</div></div>
+    <div id="app" style="display:none; flex-direction:column; gap:18px;">
+      <div class="kpis">
+        <div class="kpi"><div class="kt">Net Kâr / Zarar</div><div id="kPnl" class="kv">0.00 $</div></div>
+        <div class="kpi"><div class="kt">Başarı Oranı</div><div id="kWin" class="kv blue">%0.0</div></div>
+        <div class="kpi"><div class="kt">Profit Factor</div><div id="kPf" class="kv" style="color:#c084fc;">0.00</div></div>
+        <div class="kpi"><div class="kt">İşlem (K / Z)</div><div id="kCnt" class="kv">0</div></div>
+        <div class="kpi"><div class="kt">Ort. Kazanç / Kayıp</div><div id="kAvg" class="kv" style="font-size:14px;">+0.00$ / -0.00$</div></div>
+        <div class="kpi"><div class="kt">En İyi / En Kötü</div><div id="kExt" class="kv" style="font-size:14px;">+0.00$ / -0.00$</div></div>
       </div>
 
-      <div class="mid-grid">
+      <div class="grid2">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <strong style="font-size:13px;">KÜMÜLATİF KÂR / ZARAR EĞRİSİ (USDT)</strong>
-            <span id="chartBadge" class="tag">0.00 $</span>
+            <span id="cBadge" class="tag">0.00 $</span>
           </div>
-          <div id="chartBox" class="chart-box"></div>
+          <div id="cBox" class="chart"></div>
         </div>
         <div class="card">
           <strong style="font-size:13px; color:#10b981;">EN İYİ PARİTELER</strong>
-          <div class="scroll-box">
+          <div class="scroll">
             <table>
               <thead><tr><th>Coin</th><th>Adet</th><th>Başarı</th><th style="text-align:right;">Net PnL</th></tr></thead>
-              <tbody id="pairsBody"></tbody>
+              <tbody id="tPairs"></tbody>
             </table>
           </div>
         </div>
@@ -108,12 +104,12 @@
       <div class="card">
         <div style="display:flex; justify-content:space-between;">
           <strong style="font-size:13px; color:#facc15;">ANLIK AÇIK POZİSYONLAR</strong>
-          <span id="openCount" style="font-size:12px; color:#94a3b8;">0 Aktif</span>
+          <span id="oCnt" style="font-size:12px; color:#94a3b8;">0 Aktif</span>
         </div>
-        <div class="scroll-box">
+        <div class="scroll">
           <table>
             <thead><tr><th>Parite</th><th>Yön</th><th>Miktar</th><th>Giriş</th><th>Anlık</th><th style="text-align:right;">Anlık PnL</th></tr></thead>
-            <tbody id="openBody"></tbody>
+            <tbody id="tOpen"></tbody>
           </table>
         </div>
       </div>
@@ -121,12 +117,12 @@
       <div class="card">
         <div style="display:flex; justify-content:space-between;">
           <strong style="font-size:13px;">KAPANAN İŞLEM GEÇMİŞİ</strong>
-          <span id="tradesCount" style="font-size:12px; color:#94a3b8;">0 İşlem</span>
+          <span id="hCnt" style="font-size:12px; color:#94a3b8;">0 İşlem</span>
         </div>
-        <div class="scroll-box">
+        <div class="scroll">
           <table>
             <thead><tr><th>Parite</th><th>Tarih & Saat</th><th>Giriş → Çıkış</th><th style="text-align:right;">Net PnL</th></tr></thead>
-            <tbody id="tradesBody"></tbody>
+            <tbody id="tHist"></tbody>
           </table>
         </div>
       </div>
@@ -134,50 +130,149 @@
   </div>
 
   <script>
-    const EXCHANGE = "binance";
-    let db = null;
+    const BORSA = "binance";
+    let veri = null;
 
-    async function fetchData() {
-      const msg = document.getElementById("statusMsg");
-      const dash = document.getElementById("dashboard");
+    async function yukle() {
+      const msg = document.getElementById("msgBox");
+      const app = document.getElementById("app");
       msg.style.display = "block";
-      msg.textContent = "Veriler Binance Demo'dan çekiliyor...";
-      dash.style.display = "none";
+      msg.textContent = "Veriler çekiliyor...";
+      app.style.display = "none";
 
       try {
-        const res = await fetch("/api/stats?exchange=" + EXCHANGE + "&t=" + Date.now());
-        if (!res.ok) throw new Error("Sunucu hatası: HTTP " + res.status);
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
+        const res = await fetch("/api/stats?exchange=" + BORSA + "&t=" + Date.now());
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        veri = json;
 
-        db = data;
-        const coinSel = document.getElementById("coinFilter");
-        const prev = coinSel.value;
-        const coins = Array.from(new Set((db.recentTrades || []).map(function(t) { return t.symbol; }))).sort();
-        coinSel.innerHTML = '<option value="ALL">Tüm Pariteler (' + coins.length + ')</option>' +
-          coins.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join("");
-        if (coins.includes(prev)) coinSel.value = prev;
+        const sel = document.getElementById("fCoin");
+        const eski = sel.value;
+        const set = new Set();
+        (veri.recentTrades || new Array()).forEach(function(x) { set.add(x.symbol); });
+        const liste = Array.from(set).sort();
 
-        updateUI();
+        sel.innerHTML = '<option value="ALL">Tüm Pariteler (' + liste.length + ')</option>' +
+          liste.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join("");
+        if (liste.includes(eski)) sel.value = eski;
+
+        ciz();
         msg.style.display = "none";
-        dash.style.display = "flex";
-      } catch (e) {
-        msg.innerHTML = '<span class="red">Veri Alınamadı: ' + e.message + '</span>';
+        app.style.display = "flex";
+      } catch (err) {
+        msg.innerHTML = '<span class="red">Hata: ' + err.message + '</span>';
       }
     }
 
-    function setQuickDate(type, btn) {
-      document.querySelectorAll(".range-btn").forEach(function(b) { b.classList.remove("active"); });
+    function tarihSec(tip, btn) {
+      document.querySelectorAll(".rbtn").forEach(function(b) { b.classList.remove("active"); });
       if (btn) btn.classList.add("active");
+      const s = document.getElementById("dStart");
+      const e = document.getElementById("dEnd");
+      const bugun = new Date().toISOString().slice(0, 10);
 
-      const sIn = document.getElementById("startDate");
-      const eIn = document.getElementById("endDate");
-      const now = new Date();
-      const today = now.toISOString().slice(0, 10);
-
-      if (type === "today") { sIn.value = today; eIn.value = today; }
-      else if (type === "7d") { sIn.value = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10); eIn.value = today; }
-      else if (type === "30d") { sIn.value = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10); eIn.value = today; }
-      else if (type === "all") { sIn.value = ""; eIn.value = ""; }
-      updateUI();
+      if (tip === "today") { s.value = bugun; e.value = bugun; }
+      else if (tip === "7d") { s.value = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10); e.value = bugun; }
+      else if (tip === "30d") { s.value = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10); e.value = bugun; }
+      else if (tip === "all") { s.value = ""; e.value = ""; }
+      ciz();
     }
+
+    function ciz() {
+      if (!veri) return;
+      const sv = document.getElementById("dStart").value;
+      const ev = document.getElementById("dEnd").value;
+      const coin = document.getElementById("fCoin").value;
+      const resTip = document.getElementById("fRes").value;
+
+      const t1 = sv ? new Date(sv + "T00:00:00").getTime() : 0;
+      const t2 = ev ? new Date(ev + "T23:59:59").getTime() : Infinity;
+
+      const liste = (veri.recentTrades || new Array()).filter(function(t) {
+        if (t.time < t1 || t.time > t2) return false;
+        if (coin !== "ALL" && t.symbol !== coin) return false;
+        if (resTip === "WIN" && t.pnl <= 0) return false;
+        if (resTip === "LOSS" && t.pnl >= 0) return false;
+        return true;
+      });
+
+let net = 0, gw = 0, gl = 0, wc = 0, lc = 0, mw = 0, ml = 0;
+const pMap = {};
+liste.forEach(function(t) {
+net += t.pnl;
+if (t.pnl > 0) { wc++; gw += t.pnl; if (t.pnl > mw) mw = t.pnl; }
+else if (t.pnl < 0) { lc++; gl += Math.abs(t.pnl); if (t.pnl < ml) ml = t.pnl; }
+if (!pMap[t.symbol]) pMap[t.symbol] = { s: t.symbol, c: 0, w: 0, p: 0 };
+pMap[t.symbol].c++;
+pMap[t.symbol].p += t.pnl;
+if (t.pnl > 0) pMap[t.symbol].w++;
+});
+const tot = wc + lc;
+const wr = tot ? ((wc / tot) * 100).toFixed(1) : "0.0";
+const pf = gl > 0 ? (gw / gl).toFixed(2) : (gw > 0 ? "∞" : "0.00");
+const elPnl = document.getElementById("kPnl");
+elPnl.textContent = (net >= 0 ? "+" : "") + net.toFixed(2) + " $";
+elPnl.className = "kv " + (net >= 0 ? "green" : "red");
+document.getElementById("kWin").textContent = "%" + wr;
+document.getElementById("kPf").textContent = pf;
+document.getElementById("kCnt").textContent = tot + " (" + wc + "K / " + lc + "Z)";
+document.getElementById("kAvg").innerHTML = '+' + (wc ? (gw / wc).toFixed(2) : "0.00") + '$ / -' + (lc ? (gl / lc).toFixed(2) : "0.00") + '$';
+document.getElementById("kExt").innerHTML = '+' + mw.toFixed(2) + '$ / ' + ml.toFixed(2) + '$';
+const sirali = Object.values(pMap).sort(function(a, b) { return b.p - a.p; });
+document.getElementById("tPairs").innerHTML = sirali.length === 0
+? 'Veri yok'
+: sirali.map(function(x) { return '' + x.s + '' + x.c + '%' + ((x.w / x.c) * 100).toFixed(0) + '' + (x.p >= 0 ? '+' : '') + x.p.toFixed(2) + '$'; }).join("");
+document.getElementById("hCnt").textContent = liste.length + " İşlem";
+document.getElementById("tHist").innerHTML = liste.length === 0
+? 'İşlem yok'
+: liste.map(function(t) { return '' + t.symbol + '' + new Date(t.time).toLocaleString("tr-TR") + '' + t.entryPrice + ' → ' + t.exitPrice + '' + (t.pnl >= 0 ? '+' : '') + t.pnl.toFixed(2) + '$'; }).join("");
+const acik = (veri.openPositions || new Array()).filter(function(p) { return coin === "ALL" || p.symbol === coin; });
+document.getElementById("oCnt").textContent = acik.length + " Aktif";
+document.getElementById("tOpen").innerHTML = acik.length === 0
+? 'Açık pozisyon yok'
+: acik.map(function(p) { return '' + p.symbol + ' ' + p.leverage + 'x' + p.side + '' + p.size + '' + p.entryPrice + '' + p.markPrice + '' + (p.unrealizedPnl >= 0 ? '+' : '') + p.unrealizedPnl.toFixed(2) + '$'; }).join("");
+grafikCiz(liste);
+}
+function grafikCiz(trades) {
+const box = document.getElementById("cBox");
+const badge = document.getElementById("cBadge");
+const sirali = trades.slice().sort(function(a, b) { return a.time - b.time; });
+if (sirali.length === 0) {
+badge.textContent = "0.00 $";
+box.innerHTML = 'Grafik verisi yok';
+return;
+}
+let toplam = 0;
+const noktalar = new Array();
+noktalar.push(0);
+sirali.forEach(function(t) {
+toplam += t.pnl;
+noktalar.push(toplam);
+});
+badge.textContent = (toplam >= 0 ? "+" : "") + toplam.toFixed(2) + " $";
+badge.className = "tag " + (toplam >= 0 ? "tlong" : "tshort");
+const W = 600, H = 180, P = 15;
+const min = Math.min.apply(null, noktalar);
+const max = Math.max.apply(null, noktalar);
+const fark = (max - min) || 1;
+const pts = noktalar.map(function(v, i) {
+const x = P + (i / (noktalar.length - 1)) * (W - P * 2);
+const y = H - P - ((v - min) / fark) * (H - P * 2);
+return x.toFixed(1) + "," + y.toFixed(1);
+});
+const zY = (H - P - ((0 - min) / fark) * (H - P * 2)).toFixed(1);
+const renk = toplam >= 0 ? "#10b981" : "#f43f5e";
+box.innerHTML = '' +
+'' +
+'<polyline fill="none" stroke="' + renk + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="' + pts.join(" ") + '"/>' +
+'';
+}
+document.getElementById("refreshBtn").onclick = yukle;
+document.getElementById("dStart").onchange = function() { tarihSec("custom", null); };
+document.getElementById("dEnd").onchange = function() { tarihSec("custom", null); };
+document.getElementById("fCoin").onchange = ciz;
+document.getElementById("fRes").onchange = ciz;
+document.querySelectorAll(".rbtn").forEach(function(b) {
+b.onclick = function() { tarihSec(b.dataset.r, b); };
+});
+yukle();
