@@ -3,169 +3,184 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bybit Demo Bot - Performans Paneli</title>
+  <title>Bybit Demo - Pro Analiz Paneli</title>
   <script src="https://tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
-  <div class="max-w-6xl mx-auto">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-800 pb-6">
+<body class="bg-[#090d16] text-slate-100 min-h-screen p-4 md:p-6 font-sans">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Üst Başlık -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 border border-slate-800 p-5 rounded-2xl gap-4">
       <div>
-        <span class="bg-amber-500/20 text-amber-400 text-xs font-bold px-3 py-1 rounded-full">BYBIT DEMO TRADING</span>
-        <h1 class="text-3xl font-bold mt-2 text-white">Bybit Bot Analiz Paneli</h1>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+          <span class="text-xs font-bold tracking-wider uppercase text-amber-400">BYBIT DEMO TRADING</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold mt-1 text-white">Bybit Bot Analiz Merkezi</h1>
       </div>
-      <div class="flex gap-3">
-        <a href="/binance.html" class="bg-slate-800 hover:bg-slate-700 text-sm px-4 py-2 rounded-lg transition">Binance Paneline Geç →</a>
-        <button onclick="loadData()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-sm px-4 py-2 rounded-lg transition">Yenile</button>
+      <div class="flex flex-wrap gap-3">
+        <a href="/binance.html" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium px-4 py-2.5 rounded-xl transition">Binance Paneline Geç →</a>
+        <button id="btnRefresh" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-5 py-2.5 rounded-xl transition shadow-lg">Verileri Yenile</button>
       </div>
     </div>
 
-    <div id="loading" class="text-center py-12 text-slate-400">Veriler Bybit Demo'dan çekiliyor...</div>
+    <!-- Filtre Alanı -->
+    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center">
+      <div class="flex flex-wrap gap-2 items-center">
+        <span class="text-xs text-slate-400 font-semibold uppercase mr-1">Dönem:</span>
+        <button data-range="today" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Bugün</button>
+        <button data-range="7d" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Son 7 Gün</button>
+        <button data-range="30d" class="range-btn bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition">Son 30 Gün</button>
+        <button data-range="all" class="range-btn bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition">Tümü</button>
+      </div>
 
-    <div id="dashboard" class="hidden space-y-8">
+      <div class="flex flex-wrap gap-3 items-center">
+        <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
+          <span class="text-xs text-slate-400">Başlangıç:</span>
+          <input type="date" id="startDate" class="bg-transparent text-xs text-white focus:outline-none [color-scheme:dark]" />
+        </div>
+        <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
+          <span class="text-xs text-slate-400">Bitiş:</span>
+          <input type="date" id="endDate" class="bg-transparent text-xs text-white focus:outline-none [color-scheme:dark]" />
+        </div>
+        <select id="coinFilter" class="bg-slate-950 border border-slate-800 text-xs text-white px-3 py-2 rounded-xl focus:outline-none">
+          <option value="ALL">Tüm Pariteler</option>
+        </select>
+        <select id="resultFilter" class="bg-slate-950 border border-slate-800 text-xs text-white px-3 py-2 rounded-xl focus:outline-none">
+          <option value="ALL">Tüm Sonuçlar</option>
+          <option value="WIN">Sadece Kârlı İşlemler</option>
+          <option value="LOSS">Sadece Zararlı İşlemler</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Durum Mesajı -->
+    <div id="statusBox" class="text-center py-12 text-slate-400 bg-slate-900/50 border border-slate-800 rounded-2xl">Veriler Bybit Demo'dan yükleniyor...</div>
+
+    <!-- Ana İçerik -->
+    <div id="mainContent" class="hidden space-y-6">
+
       <!-- Özet Kartlar -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <div class="text-slate-400 text-xs uppercase">Toplam Net Kâr/Zarar</div>
-          <div id="totalPnl" class="text-2xl font-bold mt-1">0.00 USDT</div>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-slate-400 text-[11px] font-semibold uppercase">Net Kâr / Zarar</div>
+          <div id="kpiPnl" class="text-xl font-extrabold mt-1">0.00 $</div>
         </div>
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <div class="text-slate-400 text-xs uppercase">Başarı Oranı (Win Rate)</div>
-          <div id="winRate" class="text-2xl font-bold mt-1 text-sky-400">%0.0</div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-slate-400 text-[11px] font-semibold uppercase">Başarı Oranı</div>
+          <div id="kpiWinRate" class="text-xl font-extrabold mt-1 text-sky-400">%0.0</div>
         </div>
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <div class="text-slate-400 text-xs uppercase">Toplam Kapanan İşlem</div>
-          <div id="totalTrades" class="text-2xl font-bold mt-1">0</div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-slate-400 text-[11px] font-semibold uppercase">Profit Factor</div>
+          <div id="kpiPf" class="text-xl font-extrabold mt-1 text-purple-400">0.00</div>
         </div>
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <div class="text-slate-400 text-xs uppercase">Kazanan / Kaybeden</div>
-          <div id="winLoss" class="text-2xl font-bold mt-1"><span class="text-emerald-400">0</span> / <span class="text-rose-400">0</span></div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-slate-400 text-[11px] font-semibold uppercase">İşlem (Kazanan/Kaybeden)</div>
+          <div id="kpiCount" class="text-xl font-extrabold mt-1">0</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-slate-400 text-[11px] font-semibold uppercase">Ort. Kazanç / Kayıp</div>
+          <div id="kpiAvg" class="text-sm font-bold mt-2">+0.00$ / -0.00$</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-slate-400 text-[11px] font-semibold uppercase">En İyi / En Kötü İşlem</div>
+          <div id="kpiExtreme" class="text-sm font-bold mt-2">+0.00$ / -0.00$</div>
+        </div>
+      </div>
+
+      <!-- Grafik ve Parite Sıralaması -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="font-bold text-slate-200 text-sm uppercase">Kümülatif Kâr/Zarar Eğrisi (USDT)</h2>
+            <span id="chartEndVal" class="text-xs font-bold px-2.5 py-1 rounded bg-slate-800">0.00 $</span>
+          </div>
+          <div id="svgChartContainer" class="w-full h-60 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-center justify-center overflow-hidden p-2"></div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
+          <div class="p-4 border-b border-slate-800 font-bold text-sm uppercase text-emerald-400">En İyi Pariteler</div>
+          <div class="overflow-y-auto max-h-72 flex-1">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-950 text-slate-400 uppercase sticky top-0">
+                <tr>
+                  <th class="p-3">Coin</th>
+                  <th class="p-3">Adet</th>
+                  <th class="p-3">Başarı</th>
+                  <th class="p-3 text-right">Net PnL</th>
+                </tr>
+              </thead>
+              <tbody id="pairsTable" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       <!-- Açık Pozisyonlar -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div class="p-4 border-b border-slate-800 font-semibold text-amber-400">Açık Pozisyonlar</div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+          <span class="font-bold text-sm uppercase text-amber-400">Anlık Açık Pozisyonlar</span>
+          <span id="openBadge" class="text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-300">0 Aktif</span>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
-            <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase">
+            <thead class="bg-slate-950 text-slate-400 text-xs uppercase">
               <tr>
                 <th class="p-4">Parite</th>
                 <th class="p-4">Yön</th>
                 <th class="p-4">Miktar</th>
                 <th class="p-4">Giriş Fiyatı</th>
-                <th class="p-4">Anlık Fiyat</th>
-                <th class="p-4">Anlık Kâr/Zarar</th>
+                <th class="p-4">Mark Fiyat</th>
+                <th class="p-4 text-right">Anlık PnL</th>
               </tr>
             </thead>
-            <tbody id="openPositionsBody" class="divide-y divide-slate-800"></tbody>
+            <tbody id="openTable" class="divide-y divide-slate-800/60"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- En İyi Performans Gösteren Pariteler -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-slate-800 font-semibold text-emerald-400">Parite Bazlı Performans Sıralaması</div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-              <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase">
-                <tr>
-                  <th class="p-3">Parite</th>
-                  <th class="p-3">İşlem</th>
-                  <th class="p-3">Başarı</th>
-                  <th class="p-3">Net PnL</th>
-                </tr>
-              </thead>
-              <tbody id="bestPairsBody" class="divide-y divide-slate-800"></tbody>
-            </table>
-          </div>
+      <!-- Kapanan İşlemler -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+          <span class="font-bold text-sm uppercase text-slate-200">Kapanan İşlem Geçmişi</span>
+          <span id="tradesBadge" class="text-xs text-slate-400">0 İşlem</span>
         </div>
-
-        <!-- Son İşlemler -->
-        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div class="p-4 border-b border-slate-800 font-semibold text-slate-200">Son Kapanan İşlemler</div>
-          <div class="overflow-x-auto max-h-96">
-            <table class="w-full text-sm text-left">
-              <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase">
-                <tr>
-                  <th class="p-3">Parite</th>
-                  <th class="p-3">Tarih</th>
-                  <th class="p-3">Net PnL</th>
-                </tr>
-              </thead>
-              <tbody id="recentTradesBody" class="divide-y divide-slate-800"></tbody>
-            </table>
-          </div>
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-slate-950 text-slate-400 text-xs uppercase sticky top-0">
+              <tr>
+                <th class="p-3.5">Parite</th>
+                <th class="p-3.5">Tarih & Saat</th>
+                <th class="p-3.5">Giriş → Çıkış</th>
+                <th class="p-3.5 text-right">Net PnL</th>
+              </tr>
+            </thead>
+            <tbody id="tradesTable" class="divide-y divide-slate-800/60"></tbody>
+          </table>
         </div>
       </div>
+
     </div>
   </div>
 
   <script>
     const EXCHANGE = "bybit";
+    let store = null;
 
-    async function loadData() {
-      document.getElementById("loading").classList.remove("hidden");
-      document.getElementById("dashboard").classList.add("hidden");
+    async function loadStats() {
+      const statusBox = document.getElementById("statusBox");
+      const mainContent = document.getElementById("mainContent");
+      statusBox.classList.remove("hidden");
+      statusBox.textContent = "Veriler Bybit Demo'dan yükleniyor...";
+      mainContent.classList.add("hidden");
 
       try {
-        const res = await fetch(`/api/stats?exchange=${EXCHANGE}`);
-        const data = await res.json();
+        const response = await fetch("/api/stats?exchange=" + EXCHANGE);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
 
-        const pnlEl = document.getElementById("totalPnl");
-        pnlEl.textContent = `${data.summary.totalPnl >= 0 ? "+" : ""}${data.summary.totalPnl.toFixed(2)} USDT`;
-        pnlEl.className = `text-2xl font-bold mt-1 ${data.summary.totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`;
+        store = data;
 
-        document.getElementById("winRate").textContent = `%${data.summary.winRate}`;
-        document.getElementById("totalTrades").textContent = data.summary.totalTrades;
-        document.getElementById("winLoss").innerHTML = `<span class="text-emerald-400">${data.summary.wins}</span> / <span class="text-rose-400">${data.summary.losses}</span>`;
-
-        const openBody = document.getElementById("openPositionsBody");
-        openBody.innerHTML = data.openPositions.length === 0
-          ? `<tr><td colspan="6" class="p-4 text-center text-slate-500">Şu an açık pozisyon yok.</td></tr>`
-          : data.openPositions.map(p => `
-              <tr>
-                <td class="p-4 font-bold">${p.symbol} <span class="text-xs text-slate-400">${p.leverage}x</span></td>
-                <td class="p-4"><span class="px-2 py-0.5 rounded text-xs font-bold ${p.side === "LONG" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"}">${p.side}</span></td>
-                <td class="p-4">${p.size}</td>
-                <td class="p-4">${p.entryPrice}</td>
-                <td class="p-4">${p.markPrice}</td>
-                <td class="p-4 font-bold ${p.unrealizedPnl >= 0 ? "text-emerald-400" : "text-rose-400"}">${p.unrealizedPnl.toFixed(2)} USDT</td>
-              </tr>
-            `).join("");
-
-        const pairsBody = document.getElementById("bestPairsBody");
-        pairsBody.innerHTML = data.bestPairs.length === 0
-          ? `<tr><td colspan="4" class="p-4 text-center text-slate-500">Henüz kapanmış işlem verisi yok.</td></tr>`
-          : data.bestPairs.map(pair => `
-              <tr>
-                <td class="p-3 font-semibold">${pair.symbol}</td>
-                <td class="p-3">${pair.trades}</td>
-                <td class="p-3 text-sky-400">%${pair.winRate}</td>
-                <td class="p-3 font-bold ${pair.pnl >= 0 ? "text-emerald-400" : "text-rose-400"}">${pair.pnl >= 0 ? "+" : ""}${pair.pnl.toFixed(2)} $</td>
-              </tr>
-            `).join("");
-
-        const tradesBody = document.getElementById("recentTradesBody");
-        tradesBody.innerHTML = data.recentTrades.length === 0
-          ? `<tr><td colspan="3" class="p-4 text-center text-slate-500">İşlem geçmişi boş.</td></tr>`
-          : data.recentTrades.map(t => `
-              <tr>
-                <td class="p-3 font-semibold">${t.symbol}</td>
-                <td class="p-3 text-xs text-slate-400">${new Date(t.time).toLocaleString("tr-TR")}</td>
-                <td class="p-3 font-bold ${t.pnl >= 0 ? "text-emerald-400" : "text-rose-400"}">${t.pnl >= 0 ? "+" : ""}${t.pnl.toFixed(2)} $</td>
-              </tr>
-            `).join("");
-
-        document.getElementById("loading").classList.add("hidden");
-        document.getElementById("dashboard").classList.remove("hidden");
-      } catch (e) {
-        document.getElementById("loading").textContent = "Veri çekme hatası: " + e.message;
-      }
-    }
-
-    loadData();
-    setInterval(loadData, 30000);
-  </script>
-</body>
-</html>
+        const coinSelect = document.getElementById("coinFilter");
+        const prevCoin = coinSelect.value;
+        const symbols = Array.from(new Set((store.recentTrades || []).map(t => t.symbol))).sort();
